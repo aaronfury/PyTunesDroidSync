@@ -101,7 +101,7 @@ def refresh_itl():
     itl_source=Library(xml_path)
     pickle.dump(itl_source, open(pickle_file, "wb"))
 
-pickle_file="itl.p"
+pickle_file="itl.pkl"
 expiry=3600  # Refresh pickled file if older than
 epoch_time=int(time.time())  # Now
 
