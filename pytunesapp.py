@@ -5,6 +5,7 @@ from playlist import Playlist
 import flet
 from flet import (
     Page,
+    View,
     Column,
     Row,
     Icon,
@@ -27,9 +28,7 @@ class PyTunesApp(UserControl):
         self.target_devices = [flet.dropdown.Option("None")]
         self.playlists = []
         self.is_syncing = False
-        self.page.update()
-
-    def build(self):
+        
         self.text_xml_status = Text(
             value="XML not loaded"
         )
@@ -63,31 +62,21 @@ class PyTunesApp(UserControl):
             disabled=self.is_syncing
         )
 
+        self.btn_stop_sync = ElevatedButton(
+            icon=icons.STOP_CIRCLE,
+            text="STOP SYNC",
+            height=50,
+            on_click=self.stop_sync,
+            disabled=not self.is_syncing
+        )
+
         self.pb_sync_status = ProgressBar(
             width= 600,
             bar_height=16,
         )
 
-        self.bs_sync = BottomSheet(
-            open=False,
-            content=Row(
-                controls=[
-                    self.pb_sync_status,
-                    ElevatedButton(
-                        icon=icons.STOP_CIRCLE,
-                        text="Cancel sync",
-                        on_click=self.stop_sync
-                    )
-                ],
-                height=100,
-                alignment= flet.MainAxisAlignment.CENTER
-            ),
-            on_dismiss=self.persist_bottom_sheet
-        )
-        self.page.overlay.append(self.bs_sync)
-
-        return Column(
-            expand=True,
+        self.home_view = View(
+            route='/',
             controls=[
                 Row(
                     controls=[
@@ -131,6 +120,38 @@ class PyTunesApp(UserControl):
                 self.btn_sync
             ]
         )
+        self.sync_view = View(
+            route='/sync',
+            controls=[
+                self.pb_sync_status,
+                self.btn_stop_sync
+            ]
+        )
+    
+    def route_change(self, route):
+        print(self.page.route)
+        self.page.views.clear()
+        self.page.views.append(
+            self.home_view
+        )
+        if self.page.route == '/sync':
+            self.page.views.append(
+                self.sync_view
+            )
+
+    def view_pop(self, view):
+        self.page.views.pop()
+        top_view = self.page.views[-1]
+        self.page.go(top_view.route)    
+
+    def build(self):
+        self.page.on_route_change = self.route_change
+        self.page.on_view_pop = self.view_pop
+
+        return Column(
+            expand=True,
+            controls=self.home_view.controls
+        )
 
     def initialize(self):
         self.load_library()
@@ -160,15 +181,17 @@ class PyTunesApp(UserControl):
         self.is_syncing=True
         self.btn_sync.disabled=True
         self.btn_sync.update()
-        self.bs_sync.open=True
-        self.page.update()
+        self.page.go("/sync")
+        self.btn_stop_sync.disabled=False
+        self.btn_stop_sync.update()
     
     def stop_sync(self, e):
         self.is_syncing=False
         self.btn_sync.disabled=False
         self.btn_sync.update()
-        self.bs_sync.open=False
-        self.page.update()
+        self.btn_stop_sync.disabled=True
+        self.btn_stop_sync.update()
+        self.page.go("/")
 
     def persist_bottom_sheet(self,e):
         if (self.is_syncing):
