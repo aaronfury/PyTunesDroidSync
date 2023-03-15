@@ -2,6 +2,7 @@ import os.path
 import time
 from libpytunes import Library
 from playlist import Playlist
+from database import SyncDB
 import flet
 from flet import (
     Page,
@@ -13,7 +14,6 @@ from flet import (
     Dropdown,
     ListView,
     ElevatedButton,
-    BottomSheet,
     ProgressBar,
     UserControl,
     icons,
@@ -70,9 +70,20 @@ class PyTunesApp(UserControl):
             disabled=not self.is_syncing
         )
 
-        self.pb_sync_status = ProgressBar(
-            width= 600,
-            bar_height=16,
+        self.pb_sync_one_status = ProgressBar(
+            width=800,
+            bar_height=20,
+            value=0,
+        )
+        self.pb_sync_two_status = ProgressBar(
+            width=800,
+            bar_height=20,
+            value=0,
+        )
+        self.pb_sync_three_status = ProgressBar(
+            width=800,
+            bar_height=20,
+            value=0,
         )
 
         self.home_view = View(
@@ -123,8 +134,58 @@ class PyTunesApp(UserControl):
         self.sync_view = View(
             route='/sync',
             controls=[
-                self.pb_sync_status,
-                self.btn_stop_sync
+                Row(
+                    controls=[
+                        Column(
+                            controls=[
+                                Row(
+                                    controls=[
+                                        Icon(icons.LIBRARY_MUSIC),
+                                        Text("Step 1: Reading playlists"),
+                                    ]
+                                ),
+                                self.pb_sync_one_status,
+                            ]
+                        )
+                    ]
+                ),
+                Row(
+                    controls=[
+                        Column(
+                            controls=[
+                                Row(
+                                    controls=[
+                                        Icon(icons.PHONE_ANDROID),
+                                        Text("Step 2: Reading device contents"),
+                                    ]
+                                ),
+                                self.pb_sync_two_status
+                            ]
+                        )
+                    ],
+                    opacity=.5,
+                ),
+                Row(
+                    controls=[
+                        Column(
+                            controls=[
+                                Row(
+                                    controls=[
+                                        Icon(icons.SYNC_ALT),
+                                        Text("Step 3: Syncing contents"),
+                                    ]
+                                ),
+                                self.pb_sync_three_status
+                            ]
+                        )
+                    ],
+                    opacity=0.5
+                ),
+                Row(
+                    controls=[
+                        self.btn_stop_sync
+                    ]
+                )
             ]
         )
     
@@ -184,6 +245,7 @@ class PyTunesApp(UserControl):
         self.page.go("/sync")
         self.btn_stop_sync.disabled=False
         self.btn_stop_sync.update()
+        self.read_playlists()
     
     def stop_sync(self, e):
         self.is_syncing=False
@@ -192,8 +254,10 @@ class PyTunesApp(UserControl):
         self.btn_stop_sync.disabled=True
         self.btn_stop_sync.update()
         self.page.go("/")
-
-    def persist_bottom_sheet(self,e):
-        if (self.is_syncing):
-            self.bs_sync.open=True
-            self.bs_sync.update()
+        
+    def read_playlists(self):
+        playlists = filter(lambda playlist: playlist.value, self.lv_playlists.controls)
+        for playlist in playlists:
+            print(f'Now reading {playlist}')
+            playlist_item = self.itl.getPlaylist(playlist.name)
+            
