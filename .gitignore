@@ -6,6 +6,9 @@ __pycache__/
 # pickle files
 *.pkl
 
+# sqlite database
+*.db
+
 # C extensions
 *.so
 

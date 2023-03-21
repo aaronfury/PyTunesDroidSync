@@ -236,9 +236,6 @@ class PyTunesApp(UserControl):
         self.lv_playlists.update()
     
     def start_sync(self, e):
-        selected_playlists = filter(lambda playlist: playlist.value,self.lv_playlists.controls)
-        for selected in selected_playlists:
-            print(selected)
         self.is_syncing=True
         self.btn_sync.disabled=True
         self.btn_sync.update()
@@ -257,7 +254,11 @@ class PyTunesApp(UserControl):
         
     def read_playlists(self):
         playlists = filter(lambda playlist: playlist.value, self.lv_playlists.controls)
+        
+        db = SyncDB('pytunes.db')
+        db.create_tables()
         for playlist in playlists:
             print(f'Now reading {playlist}')
             playlist_item = self.itl.getPlaylist(playlist.name)
             
+            db.populate_playlist(playlist_item)
