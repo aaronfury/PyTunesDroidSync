@@ -86,6 +86,57 @@ class PyTunesApp(UserControl):
             value=0,
         )
 
+        self.row_sync_one = Row(
+            controls=[
+                Column(
+                    controls=[
+                        Row(
+                            controls=[
+                                Icon(icons.LIBRARY_MUSIC),
+                                Text("Step 1: Reading playlists"),
+                            ]
+                        ),
+                        self.pb_sync_one_status,
+                    ]
+                )
+            ],
+            opacity=0.5,
+        )
+
+        self.row_sync_two = Row(
+            controls=[
+                Column(
+                    controls=[
+                        Row(
+                            controls=[
+                                Icon(icons.PHONE_ANDROID),
+                                Text("Step 2: Reading device contents"),
+                            ]
+                        ),
+                        self.pb_sync_two_status
+                    ]
+                )
+            ],
+            opacity=0.5,
+        )
+
+        self.row_sync_three = Row(
+            controls=[
+                Column(
+                    controls=[
+                        Row(
+                            controls=[
+                                Icon(icons.SYNC_ALT),
+                                Text("Step 3: Syncing contents"),
+                            ]
+                        ),
+                        self.pb_sync_three_status
+                    ]
+                )
+            ],
+            opacity=0.5
+        )
+
         self.home_view = View(
             route='/',
             controls=[
@@ -134,53 +185,9 @@ class PyTunesApp(UserControl):
         self.sync_view = View(
             route='/sync',
             controls=[
-                Row(
-                    controls=[
-                        Column(
-                            controls=[
-                                Row(
-                                    controls=[
-                                        Icon(icons.LIBRARY_MUSIC),
-                                        Text("Step 1: Reading playlists"),
-                                    ]
-                                ),
-                                self.pb_sync_one_status,
-                            ]
-                        )
-                    ]
-                ),
-                Row(
-                    controls=[
-                        Column(
-                            controls=[
-                                Row(
-                                    controls=[
-                                        Icon(icons.PHONE_ANDROID),
-                                        Text("Step 2: Reading device contents"),
-                                    ]
-                                ),
-                                self.pb_sync_two_status
-                            ]
-                        )
-                    ],
-                    opacity=.5,
-                ),
-                Row(
-                    controls=[
-                        Column(
-                            controls=[
-                                Row(
-                                    controls=[
-                                        Icon(icons.SYNC_ALT),
-                                        Text("Step 3: Syncing contents"),
-                                    ]
-                                ),
-                                self.pb_sync_three_status
-                            ]
-                        )
-                    ],
-                    opacity=0.5
-                ),
+                self.row_sync_one,
+                self.row_sync_two,
+                self.row_sync_three,
                 Row(
                     controls=[
                         self.btn_stop_sync
@@ -253,7 +260,9 @@ class PyTunesApp(UserControl):
         self.page.go("/")
         
     def read_playlists(self):
-        playlists = filter(lambda playlist: playlist.value, self.lv_playlists.controls)
+        self.row_sync_one.opacity = 1
+        self.row_sync_one.update()
+        playlists = list(filter(lambda playlist: playlist.value, self.lv_playlists.controls))
         
         db = SyncDB('pytunes.db')
         db.create_tables()
@@ -262,3 +271,6 @@ class PyTunesApp(UserControl):
             playlist_item = self.itl.getPlaylist(playlist.name)
             
             db.populate_playlist(playlist_item)
+            self.pb_sync_one_status.value = playlists.index(playlist) / (len(playlists)-1)
+        self.row_sync_one.opacity = 0.5
+        self.row_sync_one.update()
