@@ -1,5 +1,8 @@
 import os.path
+import atexit
+import subprocess
 import time
+from ppadb.client import Client as AdbClient
 from libpytunes import Library
 from playlist import Playlist
 from database import SyncDB
@@ -9,7 +12,9 @@ from flet import (
     View,
     Column,
     Row,
+    Container,
     Icon,
+    IconButton,
     Text,
     Dropdown,
     ListView,
@@ -25,19 +30,35 @@ class PyTunesApp(UserControl):
         self.page = page
         self.xml_path = os.path.expanduser('~/Music/iTunes/iTunes Music Library.xml')
         self.itl = None
-        self.target_devices = [flet.dropdown.Option("None")]
+        self.target_device = None
         self.playlists = []
         self.is_syncing = False
+
+        self.adbdaemon = subprocess.Popen(['adb.exe', 'start-server'])
+        self.adbclient = AdbClient()
+        atexit.register(self.exit_cleanup)
         
         self.text_xml_status = Text(
             value="XML not loaded"
         )
 
-        self.target_device = Dropdown(
-            options=self.target_devices,
-            filled=True,
-            label="Target MTP Device",
-            value="None",
+        self.target_devices = Dropdown(
+            #filled=True,
+            label="Target ADB Device",
+            hint_text="Select a device",
+            on_change=self.set_target_device
+        )
+        self.refresh_devices = IconButton(
+            icon=flet.icons.REFRESH,
+            icon_size=20,
+            tooltip="Rescan devices",
+            on_click=self.get_target_devices
+        )
+        self.device_controls = Row(
+            controls=[
+                self.refresh_devices,
+                self.target_devices
+            ]
         )
 
         self.lv_playlists = ListView(
@@ -143,7 +164,7 @@ class PyTunesApp(UserControl):
                 Row(
                     controls=[
                         self.text_xml_status,
-                        self.target_device
+                        self.device_controls,
                     ],
                     alignment= flet.MainAxisAlignment.SPACE_BETWEEN,
                     height=100,
@@ -195,7 +216,7 @@ class PyTunesApp(UserControl):
                 )
             ]
         )
-    
+
     def route_change(self, route):
         print(self.page.route)
         self.page.views.clear()
@@ -223,6 +244,26 @@ class PyTunesApp(UserControl):
 
     def initialize(self):
         self.load_library()
+
+    def exit_cleanup(self):
+        self.adbdaemon.terminate()
+        print("Bye bye!")
+
+    def get_target_devices(self, e):
+        self.target_devices.options.clear()
+        
+        self.adbdevices = self.adbclient.devices()
+        if not self.adbdevices:
+            print("No ADB devices detected")
+        else:
+            for device in self.adbdevices:
+                device_name = device.shell('getprop ro.product.model').strip()
+                self.target_devices.options.append(flet.dropdown.Option(key=device.serial, text=device_name))        
+        self.target_devices.update()
+
+    def set_target_device(self, e):
+        self.target_device = self.target_devices.value
+        print(f'Selected target device {self.target_device}')
 
     def load_library(self):
         if os.path.isfile(self.xml_path):
