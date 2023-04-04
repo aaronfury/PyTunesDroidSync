@@ -12,7 +12,6 @@ from flet import (
     View,
     Column,
     Row,
-    Container,
     Icon,
     IconButton,
     Text,
@@ -31,6 +30,7 @@ class PyTunesApp(UserControl):
         self.xml_path = os.path.expanduser('~/Music/iTunes/iTunes Music Library.xml')
         self.itl = None
         self.target_device = None
+        self.target_path = "/Music"
         self.playlists = []
         self.is_syncing = False
 
@@ -42,22 +42,22 @@ class PyTunesApp(UserControl):
             value="XML not loaded"
         )
 
-        self.target_devices = Dropdown(
-            #filled=True,
-            label="Target ADB Device",
-            hint_text="Select a device",
-            on_change=self.set_target_device
-        )
         self.refresh_devices = IconButton(
             icon=flet.icons.REFRESH,
             icon_size=20,
             tooltip="Rescan devices",
             on_click=self.get_target_devices
         )
+        self.target_devices = Dropdown(
+            filled=True,
+            label="Target ADB Device",
+            hint_text="Select a device",
+            on_change=self.set_target_device,
+        )
         self.device_controls = Row(
             controls=[
+                self.target_devices,
                 self.refresh_devices,
-                self.target_devices
             ]
         )
 
@@ -244,6 +244,7 @@ class PyTunesApp(UserControl):
 
     def initialize(self):
         self.load_library()
+        self.get_target_devices(None)
 
     def exit_cleanup(self):
         self.adbdaemon.terminate()
@@ -259,11 +260,14 @@ class PyTunesApp(UserControl):
             for device in self.adbdevices:
                 device_name = device.shell('getprop ro.product.model').strip()
                 self.target_devices.options.append(flet.dropdown.Option(key=device.serial, text=device_name))        
+        if len(self.target_devices.options) == 1:
+            self.target_devices.value = self.target_devices.options[0].key
+            self.set_target_device(self.target_devices)
         self.target_devices.update()
 
     def set_target_device(self, e):
-        self.target_device = self.target_devices.value
-        print(f'Selected target device {self.target_device}')
+        self.target_device = self.adbclient.device(self.target_devices.value)
+        print(f'Selected target device with serial {self.target_devices.value}')
 
     def load_library(self):
         if os.path.isfile(self.xml_path):
@@ -291,6 +295,7 @@ class PyTunesApp(UserControl):
         self.btn_stop_sync.disabled=False
         self.btn_stop_sync.update()
         self.read_playlists()
+        self.read_device()
     
     def stop_sync(self, e):
         self.is_syncing=False
@@ -307,11 +312,32 @@ class PyTunesApp(UserControl):
         
         db = SyncDB('pytunes.db')
         db.create_tables()
+        playlists_count = len(playlists)
         for playlist in playlists:
             print(f'Now reading {playlist}')
             playlist_item = self.itl.getPlaylist(playlist.name)
             
             db.populate_playlist(playlist_item)
-            self.pb_sync_one_status.value = playlists.index(playlist) / (len(playlists)-1)
+            self.pb_sync_one_status.value = playlists.index(playlist) / ((playlists_count-1) if playlists_count > 1 else playlists_count)
         self.row_sync_one.opacity = 0.5
         self.row_sync_one.update()
+
+    def read_device(self):
+        self.row_sync_two.opacity = 1
+        self.row_sync_two.update()
+        
+        print(f"Now reading files on device at path {self.target_path}")
+        self.target_device.shell(f'find $EXTERNAL_STORAGE{self.target_path}', handler=self.parse_device_files)
+
+        self.row_sync_two.opacity = 0.5
+        self.row_sync_two.update()
+
+    def parse_device_files(self, connection):
+        file_list = None
+        while True:
+            data = connection.read(1024)
+            if not data:
+                break
+            file_list += data.decode('utf-8')
+        
+        connection.close()
