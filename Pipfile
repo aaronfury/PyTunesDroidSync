@@ -8,6 +8,13 @@ requests = "*"
 libpytunes = {path = "./libpytunes-1.5.2-py310-none-any.whl"}
 pymtp = "*"
 flet = "*"
+certifi = "==2023.11.17"
+distlib = "==0.3.8"
+filelock = "==3.13.1"
+pipenv = "==2023.11.17"
+platformdirs = "==4.1.0"
+virtualenv = "==20.25.0"
+pure-python-adb = "*"
 
 [dev-packages]
 

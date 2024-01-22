@@ -34,7 +34,7 @@ class PyTunesApp(UserControl):
         self.playlists = []
         self.is_syncing = False
 
-        self.adbdaemon = subprocess.Popen(['adb.exe', 'start-server'])
+        self.adbdaemon = subprocess.Popen(['adb', 'start-server'])
         self.adbclient = AdbClient()
         atexit.register(self.exit_cleanup)
         
@@ -275,7 +275,8 @@ class PyTunesApp(UserControl):
             self.text_xml_status.value = f"XML loaded at {time.strftime('%I:%M %p')}"
             self.text_xml_status.update()
         else:
-            self.xml_status = "XML file not found"
+            self.text_xml_status.value = "iTunes XML file not found!"
+            self.text_xml_status.update()
             return
         
         self.playlists.clear()
